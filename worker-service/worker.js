@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import dotenv from "dotenv";
 import { connection } from "../queue/redisConnection.js";
+import { dlqQueue } from "../queue/dlqQueue.js";
 
 dotenv.config();
 
@@ -28,8 +29,19 @@ worker.on("completed", (job) => {
   console.log(`Job ${job.id} completed`);
 });
 
-worker.on("failed", (job, err) => {
+worker.on("failed", async (job, err) => {
   console.log(
     `Job ${job.id} failed. Attempt ${job.attemptsMade}/${job.opts.attempts}`
   );
+
+  //  If all retries exhausted → move to DLQ
+  if (job.attemptsMade === job.opts.attempts) {
+    console.log(`Moving job ${job.id} to DLQ`);
+
+    await dlqQueue.add(job.name, {
+      originalJobId: job.id,
+      data: job.data,
+      error: err.message,
+    });
+  }
 });
