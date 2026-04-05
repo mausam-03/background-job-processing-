@@ -9,14 +9,15 @@ const worker = new Worker(
   async (job) => {
     console.log("Processing job:", job.name);
 
-    // Example logic
-    if (job.name === "email") {
-      console.log("Sending email to:", job.data.email);
+    //  simulate random failure
+    const fail = Math.random() < 0.5;
+
+    if (fail) {
+      console.log("Simulated failure");
+      throw new Error("Random failure occurred");
     }
 
-    if (job.name === "certificate") {
-      console.log("Generating certificate for:", job.data.userId);
-    }
+    console.log("Job succeeded:", job.id);
 
     return { success: true };
   },
@@ -28,5 +29,7 @@ worker.on("completed", (job) => {
 });
 
 worker.on("failed", (job, err) => {
-  console.log(`Job ${job.id} failed:`, err.message);
+  console.log(
+    `Job ${job.id} failed. Attempt ${job.attemptsMade}/${job.opts.attempts}`
+  );
 });
